@@ -49,7 +49,28 @@ fn rdtsc() -> u64 {
     #[cfg(target_arch = "x86_64")]
     unsafe {
         core::arch::x86_64::_mm_mfence();
-        core::arch::x86_64::_rdtsc()
+        #[cfg(target_feature = "rdpru")]
+        {
+            fn rdpru() -> u64 {
+                use core::arch::asm;
+
+                let hi: u64;
+                let lo: u64;
+                unsafe {
+                    asm!("rdpru",
+                        out("eax") lo,
+                        out("edx") hi,
+                        in("rcx") 1,
+                    );
+                }
+                (hi << 32) | lo
+            }
+            rdpru()
+        }
+        #[cfg(not(target_feature = "rdpru"))]
+        {
+            core::arch::x86_64::_rdtsc()
+        }
     }
 
     #[cfg(target_arch = "x86")]
